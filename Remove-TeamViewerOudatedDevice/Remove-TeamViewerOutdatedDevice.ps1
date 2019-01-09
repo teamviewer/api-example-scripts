@@ -40,11 +40,6 @@
     Seconds of the expiration interval.
     Must be used in combination with the `ExpiryInterval` parameter.
 
- .PARAMETER Remove
-    If set, the script actually removes outdated devices.
-    Otherwise, the script only outputs possible removal candidates.
-    The default value is `false`.
-
  .PARAMETER Force
     If set, the script will NOT ask the user for confirmation of the
     removal. This parameter only has effect in combination with the
