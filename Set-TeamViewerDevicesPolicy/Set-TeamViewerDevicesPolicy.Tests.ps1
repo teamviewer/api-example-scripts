@@ -123,7 +123,9 @@ Describe 'Set-TeamViewerDevicesPolicy' {
 
     It 'Should not set the policy for devices that are not assigned to the user' {
         $result = (Set-TeamViewerDevicesPolicy 'TestToken' 'inherit' -groupIds 'group4')
-        $result | Should -HaveCount 1
+        $result | Should -HaveCount 2
+        $result | Where-Object { $_.DeviceId -eq 'device4' } | `
+            Select-Object -ExpandProperty 'Status' | Should -Be 'Skipped'
         Assert-MockCalled Get-TeamViewerGroup -Times 0 -Scope It
         Assert-MockCalled Get-TeamViewerDevice -Times 1 -Scope It `
             -ParameterFilter { $groupId -eq 'group4' }

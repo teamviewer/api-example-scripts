@@ -9,6 +9,8 @@
     An optional group filter restricts the operation to only those devices that
     are member of the groups with the given names or IDs.
     There is also the option to exclude specific devices by their device ID.
+    Devices that are not assigned to the user that corresponds to the API token
+    will be skipped.
 
  .PARAMETER ApiToken
     The TeamViewer API token to use.
@@ -43,6 +45,9 @@
     .\Set-TeamViewerDevicesPolicy.ps1
 
  .EXAMPLE
+    .\Set-TeamViewerDevicesPolicy.ps1 -WhatIf
+
+ .EXAMPLE
     .\Set-TeamViewerDevicesPolicy.ps1 -FilterGroupNames "Group1","Group2"
 
  .EXAMPLE
@@ -54,6 +59,7 @@
     Version 1.0.0
 #>
 
+[CmdletBinding(DefaultParameterSetName = "Policy", SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true)]
     [string] $ApiToken,
@@ -144,28 +150,32 @@ function Set-TeamViewerDevicesPolicy {
     }
 
     # Filter-out excluded devices and devices that are not assigned to the user
-    $devices = @($devices | `
-            Where-Object { $_.device_id -notin $excludedDeviceIds } | `
-            Where-Object { $_.assigned_to -eq 'True' })
+    $devices = @($devices | Where-Object { $_.device_id -notin $excludedDeviceIds })
 
     Write-Information "Setting policy to '$policy' for $($devices.Count) device(s)"
 
     # Set policy for all identified devices
     ForEach ($device in $devices) {
-        if ($PSCmdlet.ShouldProcess($device.alias)) {
-            $successful = $false;
+        $status = 'Unchanged';
+        if ($device.assigned_to -ne 'True') {
+            $status = 'Skipped'
+        }
+        elseif ($PSCmdlet.ShouldProcess($device.alias)) {
             try {
                 Edit-TeamViewerDevicePolicy $apiToken $device.device_id $policy | Out-Null
-                $successful = $true
+                $status = 'Updated'
             }
-            catch { Write-Warning "Failed to set policy for device '$($device.alias)': $_" }
-            Write-Output ([pscustomobject]@{
-                    DeviceId   = $device.device_id
-                    Alias      = $device.alias
-                    Policy     = $policy
-                    Successful = $successful
-                })
+            catch {
+                Write-Warning "Failed to set policy for device '$($device.alias)': $_"
+                $status = 'Failed'
+            }
         }
+        Write-Output ([pscustomobject]@{
+                DeviceId = $device.device_id
+                Alias    = $device.alias
+                Policy   = $policy
+                Status   = $status
+            })
     }
 }
 
