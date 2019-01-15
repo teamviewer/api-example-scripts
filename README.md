@@ -1,6 +1,6 @@
 # TeamViewer API Example Scripts
 
-A continously growing set of example script that showcase the TeamViewer Web API.
+A continously growing set of example scripts that showcase the TeamViewer Web API.
 
 Read more about the TeamViewer Web API here: https://www.teamviewer.com/en/for-developers/teamviewer-api/
 
