@@ -1,0 +1,21 @@
+language: generic
+
+services:
+  - docker
+
+install:
+  - docker pull microsoft/powershell:6.0.4-ubuntu-trusty
+  
+script:
+  # Unit Tests for PowerShell scripts
+  - docker run -v ${TRAVIS_BUILD_DIR}:/tmp/src/ microsoft/powershell:6.0.4-ubuntu-trusty pwsh -c "
+      \$ProgressPreference='SilentlyContinue';
+      Install-Module Pester -Force -SkipPublisherCheck -Scope CurrentUser;
+      Invoke-Pester /tmp/src;
+      exit $LastExitCode;"
+  # Linting for PowerShell scripts
+  - docker run -v ${TRAVIS_BUILD_DIR}:/tmp/src/ microsoft/powershell:6.0.4-ubuntu-trusty pwsh -c "
+      \$ProgressPreference='SilentlyContinue';
+      Install-Module PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser;
+      Invoke-ScriptAnalyzer -Path /tmp/src -Recurse -ReportSummary -EnableExit;
+      exit $LastExitCode;"
