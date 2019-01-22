@@ -1,5 +1,7 @@
 # TeamViewer API Example Scripts
 
+[![Build Status](https://travis-ci.org/TeamViewer/api-example-scripts.svg?branch=master)](https://travis-ci.org/TeamViewer/api-example-scripts)
+
 A continously growing set of example scripts that showcase the TeamViewer Web API.
 
 Read more about the TeamViewer Web API here: https://www.teamviewer.com/en/for-developers/teamviewer-api/
