@@ -2,9 +2,7 @@
 
 [![Build Status](https://travis-ci.org/TeamViewer/api-example-scripts.svg?branch=master)](https://travis-ci.org/TeamViewer/api-example-scripts)
 
-A continously growing set of example scripts that showcase the TeamViewer Web API.
-
-Read more about the TeamViewer Web API here: https://www.teamviewer.com/en/for-developers/teamviewer-api/
+A continously growing set of example scripts that showcase the [TeamViewer Web API](https://www.teamviewer.com/en/for-developers/teamviewer-api/).
 
 ## Contents
 
@@ -12,7 +10,7 @@ Read more about the TeamViewer Web API here: https://www.teamviewer.com/en/for-d
 * 📜 Sets the policy for a list of TeamViewer devices.
 * ⚙️ PowerShell
 
-#### [Remove-TeamViewerOutdatedDevice](./Remove-TeamViewerOutdatedDevice):
+#### [Remove-TeamViewerOutdatedDevice](./Remove-TeamViewerOudatedDevice):
 * 📜 Removes TeamViewer devices that didn't appear online for a given time.
 * ⚙️ PowerShell
 
