@@ -10,7 +10,7 @@ A continously growing set of example scripts that showcase the [TeamViewer Web A
 * 📜 Sets the policy for a list of TeamViewer devices.
 * ⚙️ PowerShell
 
-#### [Remove-TeamViewerOutdatedDevice](./Remove-TeamViewerOudatedDevice):
+#### [Remove-TeamViewerOutdatedDevice](./Remove-TeamViewerOutdatedDevice):
 * 📜 Removes TeamViewer devices that didn't appear online for a given time.
 * ⚙️ PowerShell
 
