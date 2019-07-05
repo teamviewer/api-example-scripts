@@ -38,7 +38,7 @@
     Optionally apply policy changes only to devices that are member of the groups
     with the given IDs.
 
- .PARAMETER ExcludeDeviceIds
+ .PARAMETER ExcludedDeviceIds
     Optionally exclude devices with the given IDs from the policy changes.
 
  .EXAMPLE
@@ -52,6 +52,9 @@
 
  .EXAMPLE
     .\Set-TeamViewerDevicesPolicy.ps1 -PolicyId '388e8704-0f4a-4b4d-bdbf-2be823ae690f'
+
+ .EXAMPLE
+    .\Set-TeamViewerDevicesPolicy.ps1 -ExcludedDeviceIds 'd12345678','d90123456'
 
  .NOTES
     Copyright (c) 2019 TeamViewer GmbH

@@ -23,6 +23,12 @@ There is also the option to exclude specific devices by their device ID.
 .\Set-TeamViewerDevicesPolicy.ps1 -PolicyId "Pol123" -FilterGroupNames "Group1"
 ```
 
+### Set the policy of all but two specific devices in a company to "inherit"
+
+```
+.\Set-TeamViewerDevicesPolicy.ps1 -ExcludedDeviceIds "d12345678","d90123456"
+```
+
 ## More help
 
 To get further help about the script and its parameters, execute the
