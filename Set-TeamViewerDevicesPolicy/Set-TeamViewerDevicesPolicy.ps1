@@ -59,7 +59,7 @@
  .NOTES
     Copyright (c) 2019 TeamViewer GmbH
     See file LICENSE.txt
-    Version 1.0.0
+    Version 1.0.1
 #>
 
 [CmdletBinding(DefaultParameterSetName = "Policy", SupportsShouldProcess = $true)]
@@ -165,7 +165,7 @@ function Set-TeamViewerDevicesPolicy {
         }
         elseif ($PSCmdlet.ShouldProcess($device.alias)) {
             try {
-                Edit-TeamViewerDevicePolicy $apiToken $device.device_id $policy | Out-Null
+                Edit-TeamViewerDevicePolicy -accessToken $apiToken -deviceId $device.device_id -policyId $policy | Out-Null
                 $status = 'Updated'
             }
             catch {
@@ -184,5 +184,10 @@ function Set-TeamViewerDevicesPolicy {
 
 if ($MyInvocation.InvocationName -ne '.') {
     $targetPolicy = if ($PSCmdlet.ParameterSetName -eq 'SpecificPolicy') { $PolicyId } else { $Policy }
-    Set-TeamViewerDevicesPolicy $ApiToken $targetPolicy $FilterGroupNames $FilterGroupIds $ExcludedDeviceIds
+    Set-TeamViewerDevicesPolicy `
+        -apiToken $ApiToken `
+        -policy $targetPolicy `
+        -groupNames $FilterGroupNames `
+        -groupIds $FilterGroupIds `
+        -excludedDeviceIds $ExcludedDeviceIds
 }

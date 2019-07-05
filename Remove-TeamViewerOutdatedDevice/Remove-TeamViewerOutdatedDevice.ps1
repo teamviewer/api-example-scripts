@@ -62,7 +62,7 @@
  .NOTES
     Copyright (c) 2019 TeamViewer GmbH
     See file LICENSE.txt
-    Version 1.0.0
+    Version 1.0.1
 #>
 
 [CmdletBinding(DefaultParameterSetName="ExactDate", SupportsShouldProcess=$true)]
@@ -174,5 +174,5 @@ if ($MyInvocation.InvocationName -ne '.') {
     if ($ExpiryDate -ge $now) {
         Throw "Invalid expiry date specified: $ExpiryDate"
     }
-    Remove-TeamViewerOutdatedDevice $ApiToken $ExpiryDate $Force
+    Remove-TeamViewerOutdatedDevice -accessToken $ApiToken -expiryDate $ExpiryDate -force $Force
 }
