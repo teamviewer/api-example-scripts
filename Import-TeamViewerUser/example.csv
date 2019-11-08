@@ -1,0 +1,3 @@
+﻿email,name,password,permissions,language
+user1@example.test,User1,TestPassword123,"ShareOwnGroups,EditConnections,EditFullProfile,ViewOwnConnections",en
+user2@example.test,User2,TestPassword123,"ShareOwnGroups,EditConnections,EditFullProfile,ViewOwnConnections",en

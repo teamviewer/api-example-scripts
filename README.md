@@ -17,3 +17,7 @@ A continously growing set of example scripts that showcase the [TeamViewer Web A
 #### [Get-TeamViewerPolicy](./Get-TeamViewerPolicy):
 * 📜 Gets a list of TeamViewer policies.
 * ⚙️ PowerShell
+
+#### [Import-TeamViewerUser](./Import-TeamViewerUser):
+* 📜 Imports a set of users to a TeamViewer company.
+* ⚙️ PowerShell
