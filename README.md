@@ -22,6 +22,6 @@ A continously growing set of example scripts that showcase the [TeamViewer Web A
 * 📜 Imports a set of users to a TeamViewer company.
 * ⚙️ PowerShell
 
-### [Invoke-TeamViewerGroupPerUserSync](./Invoke-TeamViewerGroupPerUserSync)
+#### [Invoke-TeamViewerGroupPerUserSync](./Invoke-TeamViewerGroupPerUserSync)
 * 📜 Moves devices to a shared group per user.
 * ⚙️ PowerShell
