@@ -67,7 +67,7 @@
 
  .NOTES
     Copyright (c) 2020 TeamViewer GmbH
-    Version 1.1
+    Version 1.2
 #>
 
 [CmdletBinding(DefaultParameterSetName = 'Default', SupportsShouldProcess = $true)]
@@ -250,19 +250,19 @@ function Invoke-TeamViewerGroupPerUserSync {
     # Fetch current users/devices/groups:
 
     Write-Log "Fetching TeamViewer company users."
-    $users = (Get-TeamViewerUser -accessToken $apiToken)
+    $users = @(Get-TeamViewerUser -accessToken $apiToken)
     $usersByEmail = @{ }
     ($users | ForEach-Object { $usersByEmail[$_.email] = $_ } | Out-Null)
     Write-Log "Retrieved $($users.Count) TeamViewer company users."
 
     Write-Log "Fetching TeamViewer groups of administrative user."
-    $groups = (Get-TeamViewerGroup -accessToken $apiToken)
+    $groups = @(Get-TeamViewerGroup -accessToken $apiToken)
     $groupsByName = @{ }
     ($groups | ForEach-Object { $groupsByName[$_.name] = $_ } | Out-Null)
     Write-Log "Retrieved $($groups.Count) TeamViewer groups."
 
     Write-Log "Fetching TeamViewer devices list of administrative user."
-    $devices = (Get-TeamViewerDevice -accessToken $apiToken)
+    $devices = @(Get-TeamViewerDevice -accessToken $apiToken)
     $devicesByAlias = @{ }
     $devicesByRemoteControlId = @{}
     ($devices | Where-Object { $_.alias } | ForEach-Object { $devicesByAlias[$_.alias] = $_ } | Out-Null)
