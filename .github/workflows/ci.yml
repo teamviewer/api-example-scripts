@@ -22,7 +22,7 @@ jobs:
           $PSVersionTable
           
       # Install TeamViewerPS
-      - name: Run Pester
+      - name: Install TeamViewerPS
         shell: pwsh
         run: |
           $ProgressPreference='SilentlyContinue'
