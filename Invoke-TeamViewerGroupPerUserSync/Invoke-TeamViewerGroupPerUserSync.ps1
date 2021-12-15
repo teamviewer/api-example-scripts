@@ -60,20 +60,27 @@
     Optionally, suppresses outputting log data to a file.
 
  .EXAMPLE
-    .\Invoke-TeamViewerGroupPerUserSync -ApiToken 'MyApiToken' -MappingFilePath 'MyMappings.csv' -SourceGroupName 'My Computers'
+    .\Invoke-TeamViewerGroupPerUserSync -MappingFilePath 'MyMappings.csv' -SourceGroupName 'My Computers'
 
  .EXAMPLE
-    .\Invoke-TeamViewerGroupPerUserSync -ApiToken 'MyApiToken' -MappingFilePath 'MyMappings.csv' -IgnoreSourceGroup
+    .\Invoke-TeamViewerGroupPerUserSync -MappingFilePath 'MyMappings.csv' -IgnoreSourceGroup
 
  .NOTES
-    Copyright (c) 2020 TeamViewer GmbH
-    Version 1.2
+    This script requires the TeamViewerPS module to be installed.
+    This can be done using the following command:
+
+    ```
+    Install-Module TeamViewerPS
+    ```
+
+    Copyright (c) 2020-2021 TeamViewer GmbH
+    Version 2.0
 #>
 
 [CmdletBinding(DefaultParameterSetName = 'Default', SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true)]
-    [string] $ApiToken,
+    [securestring] $ApiToken,
 
     [Parameter(Mandatory = $true)]
     [string] $MappingFilePath,
@@ -92,101 +99,12 @@ if (-Not $MyInvocation.BoundParameters.ContainsKey('ErrorAction')) { $script:Err
 if (-Not $MyInvocation.BoundParameters.ContainsKey('InformationAction')) { $script:InformationPreference = 'Continue' }
 if (-Not $MyInvocation.BoundParameters.ContainsKey('ProgressPreference')) { $script:ProgressPreference = 'SilentlyContinue' }
 
-$tvApiBaseUrl = 'https://webapi.teamviewer.com'
-
 # Adapt this function in case the group name should follow a different pattern:
 function ConvertTo-GroupName($user) {
     return "Devices of $($user.email)"
 }
 
-function ConvertTo-TeamViewerRestError {
-    param([parameter(ValueFromPipeline)]$err)
-    try { return ($err | Out-String | ConvertFrom-Json) }
-    catch { return $err }
-}
-
-function Invoke-TeamViewerRestMethod {
-    try { return ((Invoke-WebRequest -UseBasicParsing @args).Content | ConvertFrom-Json) }
-    catch [System.Net.WebException] {
-        $stream = $_.Exception.Response.GetResponseStream()
-        $reader = New-Object System.IO.StreamReader($stream)
-        $reader.BaseStream.Position = 0
-        Throw ($reader.ReadToEnd() | ConvertTo-TeamViewerRestError)
-    }
-}
-
-function Invoke-TeamViewerPing($accessToken) {
-    $result = Invoke-TeamViewerRestMethod `
-        -Uri "$tvApiBaseUrl/api/v1/ping" `
-        -Method Get `
-        -Headers @{authorization = "Bearer $accessToken" }
-    return $result -And $result.token_valid
-}
-
-function Get-TeamViewerUser($accessToken) {
-    $result = Invoke-TeamViewerRestMethod `
-        -Uri "$tvApiBaseUrl/api/v1/users" `
-        -Method Get `
-        -Headers @{authorization = "Bearer $accessToken" }
-    return $result.users
-}
-
-function Get-TeamViewerGroup($accessToken) {
-    $result = Invoke-TeamViewerRestMethod `
-        -Uri "$tvApiBaseUrl/api/v1/groups" `
-        -Method Get `
-        -Headers @{authorization = "Bearer $accessToken" }
-    return $result.groups
-}
-
-function Add-TeamViewerGroup($accessToken, $group) {
-    $missingFields = (@('name') | Where-Object { !$group[$_] })
-    if ($missingFields.Count -gt 0) {
-        Throw "Cannot create group! Missing required fields [$missingFields]!"
-    }
-    $payload = @{ }
-    @('name') | Where-Object { $group[$_] } | ForEach-Object { $payload[$_] = $group[$_] }
-    return Invoke-TeamViewerRestMethod `
-        -Uri "$tvApiBaseUrl/api/v1/groups" `
-        -Method Post `
-        -Headers @{authorization = "Bearer $accessToken" } `
-        -ContentType "application/json; charset=utf-8" `
-        -Body ([System.Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json)))
-}
-
-function Add-TeamViewerGroupShare($accessToken, $groupId, $user) {
-    $missingFields = (@('userid', 'permissions') | Where-Object { !$user[$_] })
-    if ($missingFields.Count -gt 0) {
-        Throw "Cannot create group share! Missing required fields [$missingFields]!"
-    }
-    $payload = @{ users = @(@{ }) }
-    @('userid', 'permissions') | Where-Object { $user[$_] } | ForEach-Object { $payload.users[0][$_] = $user[$_] }
-    return Invoke-TeamViewerRestMethod `
-        -Uri "$tvApiBaseUrl/api/v1/groups/$groupId/share_group" `
-        -Method Post `
-        -Headers @{authorization = "Bearer $accessToken" } `
-        -ContentType "application/json; charset=utf-8" `
-        -Body ([System.Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json)))
-}
-
-function Get-TeamViewerDevice($accessToken) {
-    $result = Invoke-TeamViewerRestMethod `
-        -Uri "$tvApiBaseUrl/api/v1/devices" `
-        -Method Get `
-        -Headers @{authorization = "Bearer $accessToken" }
-    return $result.devices
-}
-
-function Edit-TeamViewerDevice($accessToken, $deviceId, $device) {
-    $payload = @{ }
-    @('groupid') | Where-Object { $device[$_] } | ForEach-Object { $payload[$_] = $device[$_] }
-    return Invoke-TeamViewerRestMethod `
-        -Uri "$tvApiBaseUrl/api/v1/devices/$deviceId" `
-        -Method Put `
-        -Headers @{authorization = "Bearer $accessToken" } `
-        -ContentType "application/json; charset=utf-8" `
-        -Body ([System.Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json)))
-}
+function Install-TeamViewerModule { if (!(Get-Module TeamViewerPS)) { Install-Module TeamViewerPS } }
 
 function Write-Log {
     param(
@@ -233,14 +151,14 @@ function Out-Log {
 
 function Invoke-TeamViewerGroupPerUserSync {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
-    param($apiToken, $sourceGroupName, [bool]$ignoreSourceGroup, $mappingData)
+    param($sourceGroupName, [bool]$ignoreSourceGroup, $mappingData)
 
     Write-Log "Script started"
     Write-Log "Environment: OS $([environment]::OSVersion.VersionString), PS $($PSVersionTable.PSVersion)"
     Write-Log "Read $($mappingData.Count) mapping entries from CSV."
 
     Write-Log "Checking connection to TeamViewer API."
-    if (!(Invoke-TeamViewerPing -accessToken $apiToken)) {
+    if (!(Invoke-TeamViewerPing -ApiToken $ApiToken)) {
         Write-Log -Fatal "Failed to contact TeamViewer API. Invalid token or connection problem. Aborting."
     }
 
@@ -250,23 +168,23 @@ function Invoke-TeamViewerGroupPerUserSync {
     # Fetch current users/devices/groups:
 
     Write-Log "Fetching TeamViewer company users."
-    $users = @(Get-TeamViewerUser -accessToken $apiToken)
+    $users = @(Get-TeamViewerUser -ApiToken $ApiToken)
     $usersByEmail = @{ }
-    ($users | ForEach-Object { $usersByEmail[$_.email] = $_ } | Out-Null)
+    ($users | ForEach-Object { $usersByEmail[$_.Email] = $_ } | Out-Null)
     Write-Log "Retrieved $($users.Count) TeamViewer company users."
 
     Write-Log "Fetching TeamViewer groups of administrative user."
-    $groups = @(Get-TeamViewerGroup -accessToken $apiToken)
+    $groups = @(Get-TeamViewerGroup -ApiToken $ApiToken)
     $groupsByName = @{ }
-    ($groups | ForEach-Object { $groupsByName[$_.name] = $_ } | Out-Null)
+    ($groups | ForEach-Object { $groupsByName[$_.Name] = $_ } | Out-Null)
     Write-Log "Retrieved $($groups.Count) TeamViewer groups."
 
     Write-Log "Fetching TeamViewer devices list of administrative user."
-    $devices = @(Get-TeamViewerDevice -accessToken $apiToken)
+    $devices = @(Get-TeamViewerDevice -ApiToken $ApiToken)
     $devicesByAlias = @{ }
     $devicesByRemoteControlId = @{}
-    ($devices | Where-Object { $_.alias } | ForEach-Object { $devicesByAlias[$_.alias] = $_ } | Out-Null)
-    ($devices | Where-Object { $_.remotecontrol_id } | ForEach-Object { $devicesByRemoteControlId[$_.remotecontrol_id] = $_ } | Out-Null)
+    ($devices | Where-Object { $_.Name } | ForEach-Object { $devicesByAlias[$_.Name] = $_ } | Out-Null)
+    ($devices | Where-Object { $_.TeamViewerId } | ForEach-Object { $devicesByRemoteControlId[$_.TeamViewerId] = $_ } | Out-Null)
     Write-Log "Retrieved $($devices.Count) TeamViewer devices."
 
     # Check for source group
@@ -298,7 +216,7 @@ function Invoke-TeamViewerGroupPerUserSync {
             Write-Log "Creating group '$groupName'."
             try {
                 if ($PSCmdlet.ShouldProcess("Create group '$groupName'.")) {
-                    $group = (Add-TeamViewerGroup -accessToken $apiToken -group @{name = $groupName })
+                    $group = (New-TeamViewerGroup -ApiToken $ApiToken -Name $groupName)
                     $groups += @($group)
                     $groupsByName[$groupName] = $group
                 }
@@ -312,7 +230,7 @@ function Invoke-TeamViewerGroupPerUserSync {
         }
 
         # First, try to resolve device by TeamViewer ID
-        $device = $devicesByRemoteControlId["r$($entry.teamviewerid)"]
+        $device = $devicesByRemoteControlId["$($entry.teamviewerid)"]
         if (!$device) {
             # Second, try to resolve device by alias
             $device = $devicesByAlias[$entry.device]
@@ -322,45 +240,45 @@ function Invoke-TeamViewerGroupPerUserSync {
                 continue
             }
         }
-        if (!$ignoreSourceGroup -And $device.groupid -ne $sourceGroup.id) {
-            Write-Log -Severity Warning "Device '$($device.alias)' not in source group. Skipping."
+        if (!$ignoreSourceGroup -And $device.GroupId -ne $sourceGroup.id) {
+            Write-Log -Severity Warning "Device '$($device.Name)' not in source group. Skipping."
             $statistics.Unchanged++
             continue
         }
 
         # Move device to target group, if not yet done.
-        if (!$device.groupid -or $device.groupid -ne $group.id) {
+        if (!$device.GroupId -or $device.GroupId -ne $group.Id) {
             try {
-                Write-Log "Moving device '$($device.alias)' to group '$groupName'."
-                if ($PSCmdlet.ShouldProcess("Move device '$($device.alias)' to group '$groupName'.")) {
-                    Edit-TeamViewerDevice `
-                        -accessToken $apiToken `
-                        -deviceId $device.device_id `
-                        -device @{groupid = $group.id } | Out-Null
+                Write-Log "Moving device '$($device.Name)' to group '$groupName'."
+                if ($PSCmdlet.ShouldProcess("Move device '$($device.Name)' to group '$groupName'.")) {
+                    Set-TeamViewerDevice `
+                        -ApiToken $ApiToken `
+                        -Device $device `
+                        -Group $group | Out-Null
                 }
                 $didUpdate = $true
             }
             catch {
-                Write-Log -Severity Error "Failed to move device '$($device.alias)' to group '$groupName'. Error: $_"
+                Write-Log -Severity Error "Failed to move device '$($device.Name)' to group '$groupName'. Error: $_"
                 $statistics.Failed++
                 continue
             }
         }
         else {
-            Write-Log "Device '$($device.alias)' is already in group '$groupName'. Ignoring."
+            Write-Log "Device '$($device.Name)' is already in group '$groupName'. Ignoring."
         }
 
         # Share target group with user, if not yet done.
-        $sharedUserIds = (@($group.shared_with) | Select-Object -ExpandProperty userid)
+        $sharedUserIds = (@($group.SharedWith) | Select-Object -ExpandProperty UserId)
         if ($user.id -notin $sharedUserIds) {
             try {
                 Write-Log "Sharing group '$groupName' with user '$($user.email)'."
                 if ($PSCmdlet.ShouldProcess("Sharing group '$groupName' with user '$($user.email)'.")) {
-                    $share = @{ userid = $user.id; permissions = 'full' }
-                    Add-TeamViewerGroupShare `
-                        -accessToken $apiToken `
-                        -groupId $group.id `
-                        -user $share | Out-Null
+                    Publish-TeamViewerGroup `
+                        -ApiToken $ApiToken `
+                        -Group $group `
+                        -User $user `
+                        -Permissions readwrite | Out-Null
                 }
                 $didUpdate = $true
             }
@@ -388,10 +306,11 @@ function Invoke-TeamViewerGroupPerUserSync {
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
+    Install-TeamViewerModule
+
     $mappingData = @(Import-Csv -Path $MappingFilePath -Delimiter ',')
 
     Invoke-TeamViewerGroupPerUserSync `
-        -apiToken $ApiToken `
         -sourceGroupName $SourceGroupName `
         -ignoreSourceGroup $IgnoreSourceGroup `
         -mappingData $mappingData `

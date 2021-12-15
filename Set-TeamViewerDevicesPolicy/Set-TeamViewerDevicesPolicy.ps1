@@ -57,15 +57,22 @@
     .\Set-TeamViewerDevicesPolicy.ps1 -ExcludedDeviceIds 'd12345678','d90123456'
 
  .NOTES
-    Copyright (c) 2019 TeamViewer GmbH
+    This script requires the TeamViewerPS module to be installed.
+    This can be done using the following command:
+
+    ```
+    Install-Module TeamViewerPS
+    ```
+
+    Copyright (c) 2019-2021 TeamViewer GmbH
     See file LICENSE.txt
-    Version 1.0.1
+    Version 2.0
 #>
 
 [CmdletBinding(DefaultParameterSetName = "Policy", SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true)]
-    [string] $ApiToken,
+    [securestring] $ApiToken,
 
     [Parameter(ParameterSetName = 'Policy', Mandatory = $false)]
     [ValidateSet('None', 'Inherit')]
@@ -87,95 +94,58 @@ param(
 if (-Not $MyInvocation.BoundParameters.ContainsKey('ErrorAction')) { $script:ErrorActionPreference = 'Stop' }
 if (-Not $MyInvocation.BoundParameters.ContainsKey('InformationAction')) { $script:InformationPreference = 'Continue' }
 
-$tvApiVersion = 'v1'
-$tvApiBaseUrl = 'https://webapi.teamviewer.com'
-
-function ConvertTo-TeamViewerRestError {
-    param([parameter(ValueFromPipeline)]$err)
-    try { return ($err | Out-String | ConvertFrom-Json) }
-    catch { return $err }
-}
-
-function Invoke-TeamViewerRestMethod {
-    # Using `Invoke-WebRequest` instead of `Invoke-RestMethod`:
-    # There is a known issue for PUT and DELETE operations to hang on Windows Server 2012.
-    try { return ((Invoke-WebRequest -UseBasicParsing @args).Content | ConvertFrom-Json) }
-    catch [System.Net.WebException] {
-        $stream = $_.Exception.Response.GetResponseStream()
-        $reader = New-Object System.IO.StreamReader($stream)
-        $reader.BaseStream.Position = 0
-        Throw ($reader.ReadToEnd() | ConvertTo-TeamViewerRestError)
-    }
-}
-
-function Get-TeamViewerGroup($accessToken, $name) {
-    if ($name) { $body = @{ name = $name } }
-    return Invoke-TeamViewerRestMethod -Uri "$tvApiBaseUrl/api/$tvApiVersion/groups" `
-        -Method Get -Headers @{authorization = "Bearer $accessToken"} -Body $body
-}
-
-function Get-TeamViewerDevice($accessToken, $groupId) {
-    if ($groupId) { $body = @{ groupid = $groupId } }
-    return Invoke-TeamViewerRestMethod -Uri "$tvApiBaseUrl/api/$tvApiVersion/devices" `
-        -Method Get -Headers @{authorization = "Bearer $accessToken"} -Body $body
-}
-
-function Edit-TeamViewerDevicePolicy($accessToken, $deviceId, $policyId) {
-    $payload = @{policy_id = $policyId}
-    return Invoke-TeamViewerRestMethod -Uri "$tvApiBaseUrl/api/$tvApiVersion/devices/$deviceId" `
-        -Method Put -Headers @{authorization = "Bearer $accessToken"} `
-        -ContentType 'application/json; charset=utf-8' `
-        -Body ([System.Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json)))
-}
+function Install-TeamViewerModule { if (!(Get-Module TeamViewerPS)) { Install-Module TeamViewerPS } }
 
 function Set-TeamViewerDevicesPolicy {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
-    param($apiToken, $policy, $groupNames, $groupIds, $excludedDeviceIds)
+    param($policy, $groupNames, $groupIds, $excludedDeviceIds)
 
     # Fetch groups by name and get device list for each of them.
     if ($groupNames) {
         $groups = $groupNames | ForEach-Object {
             $groupName = $_
-            @(Get-TeamViewerGroup $apiToken $_).groups | `
-                Where-Object { $_.name -eq $groupName }
+            @(Get-TeamViewerGroup -ApiToken $ApiToken -Name $groupName) | `
+                Where-Object { $_.Name -eq $groupName }
         }
-        $devices = $groups | `
-            Select-Object -ExpandProperty 'id' | `
-            ForEach-Object { @(Get-TeamViewerDevice $apiToken $_).devices }
+        $devices = $groups | ForEach-Object {
+            @(Get-TeamViewerDevice -ApiToken $ApiToken -Group $_)
+        }
     }
     # Fetch device list for each group corresponding to the given IDs.
     elseif ($groupIds) {
-        $devices = $groupIds | ForEach-Object { @(Get-TeamViewerDevice $apiToken $_).devices }
+        $devices = $groupIds | ForEach-Object {
+            @(Get-TeamViewerDevice -ApiToken $ApiToken -GroupId $_)
+        }
     }
     # Fetch all devices otherwise.
     else {
-        $devices = (@(Get-TeamViewerDevice $apiToken).devices)
+        $devices = @(Get-TeamViewerDevice -ApiToken $ApiToken)
     }
 
     # Filter-out excluded devices and devices that are not assigned to the user
-    $devices = @($devices | Where-Object { $_.device_id -notin $excludedDeviceIds })
+    $devices = @($devices | Where-Object { $_.Id -notin $excludedDeviceIds })
 
     Write-Information "Setting policy to '$policy' for $($devices.Count) device(s)"
 
     # Set policy for all identified devices
     ForEach ($device in $devices) {
         $status = 'Unchanged';
-        if ($device.assigned_to -ne 'True') {
+        if ($device.IsAssignedToCurrentAccount -ne 'True') {
             $status = 'Skipped'
         }
-        elseif ($PSCmdlet.ShouldProcess($device.alias)) {
+        elseif ($PSCmdlet.ShouldProcess($device.Name)) {
             try {
-                Edit-TeamViewerDevicePolicy -accessToken $apiToken -deviceId $device.device_id -policyId $policy | Out-Null
+                Set-TeamViewerDevice -ApiToken $ApiToken -Device $device -Policy $policy | Out-Null
                 $status = 'Updated'
             }
             catch {
-                Write-Warning "Failed to set policy for device '$($device.alias)': $_"
+                Write-Warning "Failed to set policy for device '$device': $_"
                 $status = 'Failed'
             }
         }
         Write-Output ([pscustomobject]@{
-                DeviceId = $device.device_id
-                Alias    = $device.alias
+                DeviceId = $device.Id
+                Alias    = $device.Name
                 Policy   = $policy
                 Status   = $status
             })
@@ -183,9 +153,9 @@ function Set-TeamViewerDevicesPolicy {
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
-    $targetPolicy = if ($PSCmdlet.ParameterSetName -eq 'SpecificPolicy') { $PolicyId } else { $Policy }
+    Install-TeamViewerModule
+    $targetPolicy = if ($PSCmdlet.ParameterSetName -eq 'SpecificPolicy') { $PolicyId } else { $Policy.ToLower() }
     Set-TeamViewerDevicesPolicy `
-        -apiToken $ApiToken `
         -policy $targetPolicy `
         -groupNames $FilterGroupNames `
         -groupIds $FilterGroupIds `

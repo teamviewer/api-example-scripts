@@ -9,6 +9,14 @@ script. In contrast to the definition of the "Import-" verb for Powershell, this
 script does *NOT* import the users from TeamViewer to Powershell but performs
 the reverse operation, by creating/updating TeamViewer users.
 
+## Prerequisites
+
+This script requires the `TeamViewerPS` powershell module to be installed.
+
+```powershell
+Install-Module TeamViewerPS
+```
+
 ## Examples
 
 ### Import users from a CSV file
@@ -20,7 +28,8 @@ the reverse operation, by creating/updating TeamViewer users.
 ### Import users from a CSV file that uses semi-colon as delimiter. Use the given API token
 
 ```powershell
-.\Import-TeamViewerUser -ApiToken 'SecretToken123' -Path 'example.csv' -Delimiter ';'
+$apiToken = 'SecretToken123' | ConvertTo-SecureString -AsPlainText -Force
+.\Import-TeamViewerUser -ApiToken $apiToken -Path 'example.csv' -Delimiter ';'
 ```
 
 ### Import users from a CSV file and use the given fallback password (if not specified in the CSV data)

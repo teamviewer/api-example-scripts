@@ -53,10 +53,10 @@
     .\Import-TeamViewerUser 'example.csv'
 
  .EXAMPLE
-    .\Import-TeamViewerUser -ApiToken 'SecretToken123' -Path 'example.csv' -Delimiter ';'
+    .\Import-TeamViewerUser -Path 'example.csv' -Delimiter ';'
 
  .EXAMPLE
-    $pwd = ConvertTo-SecureString 'MyPassword123' -AsPlainText -Force
+    $pwd = Read-Host -Prompt 'Enter default password' -AsSecureString
     .\Import-TeamViewerUser 'example.csv' -DefaultUserPassword $pwd
 
  .EXAMPLE
@@ -65,22 +65,29 @@
         @{email = 'user2@example.test'; name = 'Test User 2'; password = 'AnotherPassword123'},
         @{email = 'user3@example.test'; name = 'Test User 3'}
     )
-    $pwd = ConvertTo-SecureString 'MyPassword123' -AsPlainText -Force
+    $pwd = Read-Host -Prompt 'Enter default password' -AsSecureString
     $users | .\Import-TeamViewerUser -DefaultUserPassword $pwd
 
  .EXAMPLE
     .\Import-TeamViewerUser 'example.csv' -WhatIf
 
  .NOTES
-    Copyright (c) 2019 TeamViewer GmbH
+    This script requires the TeamViewerPS module to be installed.
+    This can be done using the following command:
+
+    ```
+    Install-Module TeamViewerPS
+    ```
+
+    Copyright (c) 2019-2021 TeamViewer GmbH
     See file LICENSE.txt
-    Version 1.0.0
+    Version 2.0
 #>
 
 [CmdletBinding(DefaultParameterSetName = 'File', SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true)]
-    [string] $ApiToken,
+    [securestring] $ApiToken,
 
     [Parameter(ParameterSetName = 'File', Mandatory = $true, Position = 0)]
     [string] $Path,
@@ -92,88 +99,27 @@ param(
     [char] $Delimiter = ',',
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet(
-        'bg', 'cs', 'da', 'de', 'el', 'en', 'es', 'fi', 'fr', 'hr', 'hu', 'id', 'it',
-        'ja', 'ko', 'lt', 'nl', 'no', 'pl', 'pt', 'ro', 'ru', 'sk', 'sr', 'sv', 'th',
-        'tr', 'uk', 'vi', 'zh_CN', 'zh_TW')]
-    [string] $DefaultUserLanguage = 'en',
+    [cultureinfo] $DefaultUserLanguage = 'en',
 
     [Parameter(Mandatory = $false)]
-    [System.Security.SecureString] $DefaultUserPassword,
+    [securestring] $DefaultUserPassword,
 
     [Parameter(Mandatory = $false)]
     [string[]] $DefaultUserPermissions = @('ShareOwnGroups', 'EditConnections', 'EditFullProfile', 'ViewOwnConnections'),
 
     [Parameter(Mandatory = $false)]
-    [string] $DefaultSsoCustomerId
+    [securestring] $DefaultSsoCustomerId
 )
 
 if (-Not $MyInvocation.BoundParameters.ContainsKey('ErrorAction')) { $script:ErrorActionPreference = 'Stop' }
 if (-Not $MyInvocation.BoundParameters.ContainsKey('InformationAction')) { $script:InformationPreference = 'Continue' }
 
-$tvApiVersion = 'v1'
-$tvApiBaseUrl = 'https://webapi.teamviewer.com'
-
-function ConvertTo-TeamViewerRestError {
-    param([parameter(ValueFromPipeline)]$err)
-    try { return ($err | Out-String | ConvertFrom-Json) }
-    catch { return $err }
-}
-
-function Invoke-TeamViewerRestMethod {
-    # Using `Invoke-WebRequest` instead of `Invoke-RestMethod`:
-    # There is a known issue for PUT and DELETE operations to hang on Windows Server 2012.
-    try { return ((Invoke-WebRequest -UseBasicParsing @args).Content | ConvertFrom-Json) }
-    catch [System.Net.WebException] {
-        $stream = $_.Exception.Response.GetResponseStream()
-        $reader = New-Object System.IO.StreamReader($stream)
-        $reader.BaseStream.Position = 0
-        Throw ($reader.ReadToEnd() | ConvertTo-TeamViewerRestError)
-    }
-}
-
-function Invoke-TeamViewerPing($accessToken) {
-    $result = Invoke-TeamViewerRestMethod -Uri "$tvApiBaseUrl/api/$tvApiVersion/ping" -Method Get -Headers @{authorization = "Bearer $accessToken" }
-    return $result.token_valid
-}
-
-function Get-TeamViewerUser($accessToken, $email) {
-    $result = Invoke-TeamViewerRestMethod -Uri "$tvApiBaseUrl/api/$tvApiVersion/users" -Method Get -Headers @{authorization = "Bearer $accessToken" } `
-        -Body @{full_list = $true; email = $email }
-    return $result.users | Select-Object -First 1
-}
-
-function Add-TeamViewerUser {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
-    param($accessToken, $user)
-    $missingFields = (@('name', 'email', 'language') | Where-Object { !$user[$_] })
-    if ($missingFields.Count -gt 0) {
-        Throw "Cannot create user! Missing required fields [$missingFields]!"
-    }
-    $payload = @{ }
-    @('email', 'password', 'permissions', 'name', 'language', 'sso_customer_id') | Where-Object { $user[$_] } | ForEach-Object { $payload[$_] = $user[$_] }
-    if ($PSCmdlet.ShouldProcess($user.email)) {
-        return Invoke-TeamViewerRestMethod -Uri "$tvApiBaseUrl/api/$tvApiVersion/users" -Method Post -Headers @{authorization = "Bearer $accessToken" } `
-            -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json)))
-    }
-}
-
-function Edit-TeamViewerUser {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
-    param($accessToken, $userId, $user)
-    $payload = @{ }
-    @('email', 'name', 'permissions', 'password', 'active') | Where-Object { $user[$_] } | ForEach-Object { $payload[$_] = $user[$_] }
-    if ($PSCmdlet.ShouldProcess($user.email)) {
-        return Invoke-TeamViewerRestMethod -Uri "$tvApiBaseUrl/api/$tvApiVersion/users/$userId" -Method Put -Headers @{authorization = "Bearer $accessToken" } `
-            -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json)))
-    }
-}
+function Install-TeamViewerModule { if (!(Get-Module TeamViewerPS)) { Install-Module TeamViewerPS } }
 
 function Import-TeamViewerUser {
-    param($apiToken)
     Begin {
         Write-Information "Checking connection to TeamViewer API."
-        if (!(Invoke-TeamViewerPing $apiToken)) {
+        if (!(Invoke-TeamViewerPing $ApiToken)) {
             Write-Error "Failed to contact TeamViewer API. Token or connection problem."
         }
         $statistics = @{ Created = 0; Updated = 0; Failed = 0; }
@@ -191,31 +137,54 @@ function Import-TeamViewerUser {
 
         try {
             # Check if the user already exists on the TeamViewer-side
-            $existingUser = (Get-TeamViewerUser -accessToken $apiToken -email $user.email)
+            $existingUser = (Get-TeamViewerUser -ApiToken $ApiToken -Email $user.email)
             if ($existingUser) {
                 # Update the existing user.
                 Write-Information "User with email '$($user.email)' found. Updating user."
-                Edit-TeamViewerUser -accessToken $apiToken -userId $existingUser.id -user $user | Out-Null
+                Set-TeamViewerUser -ApiToken $ApiToken -User $existingUser -Property $user | Out-Null
                 $statistics.Updated++
             }
             else {
                 # Create a new user
                 Write-Information "No user with email '$($user.email)' found. Creating user."
-                if (!$user.password -and $DefaultUserPassword) {
-                    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($DefaultUserPassword)
-                    $user.password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-                    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) | Out-Null
+                $additionalParameters = @{}
+
+                if ($user.password) {
+                    $additionalParameters['Password'] = $user.password | ConvertTo-SecureString -AsPlainText -Force
                 }
-                if (!$user.permissions -and $DefaultUserPermissions) {
-                    $user.permissions = $DefaultUserPermissions -join ','
+                elseif ($DefaultUserPassword) {
+                    $additionalParameters['Password'] = $DefaultUserPassword
                 }
-                if (!($user.language) -and $DefaultUserLanguage) {
-                    $user.language = $DefaultUserLanguage
+                else {
+                    $additionalParameters['WithoutPassword'] = $true
                 }
-                if (!$user.sso_customer_id -and $DefaultSsoCustomerId) {
-                    $user.sso_customer_id = $DefaultSsoCustomerId
+
+                if ($user.permissions) {
+                    $additionalParameters['Permissions'] = $user.permissions -split ','
                 }
-                Add-TeamViewerUser -accessToken $apiToken -user $user | Out-Null
+                elseif ($DefaultUserPermissions) {
+                    $additionalParameters['Permissions'] = $DefaultUserPermissions
+                }
+
+                if ($user.language) {
+                    $additionalParameters['Culture'] = [cultureinfo]$user.language
+                }
+                elseif ($DefaultUserLanguage) {
+                    $additionalParameters['Culture'] = $DefaultUserLanguage
+                }
+
+                if ($user.sso_customer_id) {
+                    $additionalParameters['SsoCustomerIdentifier'] = $user.sso_customer_id | ConvertTo-SecureString -AsPlainText -Force
+                }
+                elseif ($DefaultSsoCustomerId) {
+                    $additionalParameters['SsoCustomerIdentifier'] = $DefaultSsoCustomerId
+                }
+
+                New-TeamViewerUser `
+                    -ApiToken $ApiToken `
+                    -Name $user.name `
+                    -Email $user.email `
+                    @additionalParameters | Out-Null
                 $statistics.Created++
             }
         }
@@ -233,6 +202,7 @@ function Import-TeamViewerUser {
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
+    Install-TeamViewerModule
     $Users = if ($Path) { Get-Content $Path | ConvertFrom-Csv -Delimiter $Delimiter } else { $Users }
-    $Users | Import-TeamViewerUser $ApiToken
+    $Users | Import-TeamViewerUser
 }

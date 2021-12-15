@@ -60,15 +60,22 @@
     .\Remove-TeamViewerOutdatedDevice -ExpiryInterval -Hours 12 -Force
 
  .NOTES
-    Copyright (c) 2019 TeamViewer GmbH
+     This script requires the TeamViewerPS module to be installed.
+    This can be done using the following command:
+
+    ```
+    Install-Module TeamViewerPS
+    ```
+
+    Copyright (c) 2019-2021 TeamViewer GmbH
     See file LICENSE.txt
-    Version 1.0.1
+    Version 2.0
 #>
 
-[CmdletBinding(DefaultParameterSetName="ExactDate", SupportsShouldProcess=$true)]
+[CmdletBinding(DefaultParameterSetName = "ExactDate", SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true)]
-    [string] $ApiToken,
+    [securestring] $ApiToken,
 
     [Parameter(ParameterSetName = "ExactDate", Mandatory = $true)]
     [DateTime] $ExpiryDate,
@@ -94,48 +101,14 @@ param(
 if (-Not $MyInvocation.BoundParameters.ContainsKey('ErrorAction')) { $script:ErrorActionPreference = 'Stop' }
 if (-Not $MyInvocation.BoundParameters.ContainsKey('InformationAction')) { $script:InformationPreference = 'Continue' }
 
-$tvApiVersion = 'v1'
-$tvApiBaseUrl = 'https://webapi.teamviewer.com'
-
-function ConvertTo-TeamViewerRestError {
-    param([parameter(ValueFromPipeline)]$err)
-    try { return ($err | Out-String | ConvertFrom-Json) }
-    catch { return $err }
-}
-
-function Invoke-TeamViewerRestMethod {
-    # Using `Invoke-WebRequest` instead of `Invoke-RestMethod`:
-    # There is a known issue for PUT and DELETE operations to hang on Windows Server 2012.
-    try { return ((Invoke-WebRequest -UseBasicParsing @args).Content | ConvertFrom-Json) }
-    catch [System.Net.WebException] {
-        $stream = $_.Exception.Response.GetResponseStream()
-        $reader = New-Object System.IO.StreamReader($stream)
-        $reader.BaseStream.Position = 0
-        Throw ($reader.ReadToEnd() | ConvertTo-TeamViewerRestError)
-    }
-}
-
-function Get-TeamViewerDevice($accessToken, $onlineState) {
-    return Invoke-TeamViewerRestMethod -Uri "$tvApiBaseUrl/api/$tvApiVersion/devices" `
-        -Method Get -Headers @{authorization = "Bearer $accessToken"} `
-        -Body @{ online_state = $onlineState }
-}
-
-function Remove-TeamViewerDevice {
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'None')]
-    param($accessToken, $deviceId)
-    if ($PSCmdlet.ShouldProcess($deviceId)) {
-        return Invoke-TeamViewerRestMethod -Uri "$tvApiBaseUrl/api/$tvApiVersion/devices/$deviceId" `
-            -Method Delete -Headers @{authorization = "Bearer $accessToken"}
-    }
-}
+function Install-TeamViewerModule { if (!(Get-Module TeamViewerPS)) { Install-Module TeamViewerPS } }
 
 function Remove-TeamViewerOutdatedDevice {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
-    param($accessToken, $expiryDate, [bool]$force)
+    param($expiryDate, [bool]$force)
 
-    $devices = @((Get-TeamViewerDevice $accessToken 'offline').devices | `
-            Where-Object { $_.last_seen -And [DateTime]($_.last_seen) -le $expiryDate })
+    $devices = @((Get-TeamViewerDevice -ApiToken $ApiToken -FilterOnlineState 'Offline') | `
+            Where-Object { $_.LastSeenAt -And $_.LastSeenAt -le $expiryDate })
 
     Write-Information "Found $($devices.Count) devices that have been offline since $expiryDate"
 
@@ -147,26 +120,27 @@ function Remove-TeamViewerOutdatedDevice {
 
     ForEach ($device in $devices) {
         $status = 'Unchanged'
-        if ($force -Or $PSCmdlet.ShouldProcess($device.alias)) {
+        if ($force -Or $PSCmdlet.ShouldProcess($device.Name)) {
             try {
-                Remove-TeamViewerDevice $accessToken $device.device_id
+                Remove-TeamViewerDevice -ApiToken $ApiToken -Device $device
                 $status = 'Removed'
             }
             catch {
-                Write-Warning "Failed to remove device '$($device.alias)': $_"
+                Write-Warning "Failed to remove device '$($device.Name)': $_"
                 $status = 'Failed'
             }
         }
         Write-Output ([pscustomobject]@{
-                Alias    = $device.alias
-                DeviceId = $device.device_id
-                LastSeen = [DateTime]($device.last_seen)
+                Name     = $device.Name
+                DeviceId = $device.Id
+                LastSeen = $device.LastSeenAt
                 Status   = $status
             })
     }
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
+    Install-TeamViewerModule
     $now = (Get-Date)
     if ($ExpiryInterval) {
         $ExpiryDate = $now.AddDays(-1 * $Days).AddHours(-1 * $Hours).AddMinutes(-1 * $Minutes).AddSeconds(-1 * $Seconds)
@@ -174,5 +148,5 @@ if ($MyInvocation.InvocationName -ne '.') {
     if ($ExpiryDate -ge $now) {
         Throw "Invalid expiry date specified: $ExpiryDate"
     }
-    Remove-TeamViewerOutdatedDevice -accessToken $ApiToken -expiryDate $ExpiryDate -force $Force
+    Remove-TeamViewerOutdatedDevice -expiryDate $ExpiryDate -force $Force
 }
