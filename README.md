@@ -1,5 +1,7 @@
 # TeamViewer API Example Scripts
 
+[![CI](https://github.com/teamviewer/api-example-scripts/actions/workflows/ci.yml/badge.svg)](https://github.com/teamviewer/api-example-scripts/actions/workflows/ci.yml)
+
 A continously growing set of example scripts that showcase the
 [TeamViewer Web API](https://www.teamviewer.com/en/for-developers/teamviewer-api/).
 
