@@ -1,38 +1,50 @@
 name: CI
 
+# Controls when the workflow will run
 on:
-  workflow_dispatch:
+  # Triggers the workflow on push or pull request events but only for the master branch
   push:
     branches: [ master ]
   pull_request:
     branches: [ master ]
 
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
 
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      # Check-out the repository under $GITHUB_WORKSPACE, so the job can access it
       - uses: actions/checkout@v2
 
-      # Print versions
+      # Print Powershell version
       - name: Powershell Environment
         shell: pwsh
         run: |
           $PSVersionTable
-          
+
       # Install TeamViewerPS
       - name: Install TeamViewerPS
         shell: pwsh
         run: |
-          $ProgressPreference='SilentlyContinue'
+          $ProgressPreference = 'SilentlyContinue'
           Install-Module TeamViewerPS -Force -SkipPublisherCheck -Scope CurrentUser -Verbose
 
-      # Run tests
-      - name: Run Pester
+      # Run linter
+      - name: Run linter (via PSScriptAnalyzer)
         shell: pwsh
         run: |
-          $ProgressPreference='SilentlyContinue'
-          Install-Module Pester -Force -SkipPublisherCheck -Scope CurrentUser `
-            -RequiredVersion 5.1.1 -Verbose
-          Invoke-Pester $env:GITHUB_WORKSPACE -Output Detailed -CI
+          $ProgressPreference = 'SilentlyContinue'
+          $ErrorActionPreference = 'Stop'
+          Install-Module PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser -RequiredVersion 1.19.1 -Verbose
+          Invoke-ScriptAnalyzer -Path $env:GITHUB_WORKSPACE -Recurse -ReportSummary -EnableExit -ExcludeRule PSReviewUnusedParameter
+
+      # Run tests
+      - name: Run tests (via Pester)
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Install-Module -Name Pester -Force -SkipPublisherCheck -Scope CurrentUser -RequiredVersion 5.1.1 -Verbose
+          Invoke-Pester -Path $env:GITHUB_WORKSPACE -Output Detailed -CI
