@@ -13,7 +13,7 @@
     The TeamViewer API token to use.
     Must be a user access token.
     The token requires the following access permissions:
-        - `Computer & Contacts > View entries, add entries, edit entries, remove entries`
+        - `Device Groups > read operations, modifying operations`
 
  .PARAMETER ExpiryDate
     A specific expiry date. All devices that haven't been online since that
