@@ -1,0 +1,22 @@
+{
+    // See https://go.microsoft.com/fwlink/?linkid=830387 for the documentation about the launch.json format
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Test (via Pester)",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "Invoke-Pester",
+            "args": [
+                "-Path '${workspaceFolder}' -Output Detailed"
+            ]
+        },
+        {
+            "name": "Run (via PowerShell)",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "Start-Process -FilePath '${workspaceFolder}/Configure TeamViewer AD Connector.bat' -WorkingDirectory '${workspaceFolder}' -Wait",
+            "args": []
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+{
+    // Place your settings in this file to overwrite default and user settings.
+    "editor.formatOnSave": true,
+    "files.eol": "\r\n",
+    "files.encoding": "utf8",
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "powershell.codeFolding.showLastLine": false,
+    "powershell.buttons.showPanelMovementButtons": true,
+    "powershell.codeFormatting.preset": "Stroustrup",
+    "powershell.codeFormatting.pipelineIndentationStyle": "NoIndentation",
+    "powershell.codeFormatting.ignoreOneLineBlock": false,
+    "powershell.codeFormatting.addWhitespaceAroundPipe": true,
+    "powershell.codeFormatting.alignPropertyValuePairs": true,
+    "powershell.codeFormatting.autoCorrectAliases": true,
+    "powershell.codeFormatting.avoidSemicolonsAsLineTerminators": true,
+    "powershell.codeFormatting.newLineAfterCloseBrace": true,
+    "powershell.codeFormatting.newLineAfterOpenBrace": true,
+    "powershell.codeFormatting.trimWhitespaceAroundPipe": true,
+    "powershell.codeFormatting.useConstantStrings": true,
+    "powershell.codeFormatting.useCorrectCasing": true,
+    "powershell.codeFormatting.whitespaceAfterSeparator": true,
+    "powershell.codeFormatting.whitespaceAroundOperator": true,
+    "powershell.codeFormatting.whitespaceBeforeOpenBrace": true,
+    "powershell.codeFormatting.whitespaceBeforeOpenParen": true,
+    "powershell.codeFormatting.whitespaceBetweenParameters": true,
+    "powershell.codeFormatting.whitespaceInsideBrace": true,
+    "[markdown]": {
+        "editor.tabSize": 2,
+        "editor.trimAutoWhitespace": false,
+        "files.trimTrailingWhitespace": false
+    },
+    "markdownlint.config": {
+        "MD009": false,
+        "MD024": false,
+        "MD025": false,
+        "MD028": false
+    },
+    "[yaml]": {
+        "editor.tabSize": 2
+    }
+}
