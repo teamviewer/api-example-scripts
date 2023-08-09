@@ -4,7 +4,7 @@
 
  .DESCRIPTION
     The script fetches a list of SSO domains you have configured, loads the CSV file, 
-    will check for email addresses for each of your domains in hte CSV and add them to the exclusion list of their repective domain
+    will check for email addresses for each of your domains in the CSV and add them to the exclusion list of their repective domain
     emails not matching to any of your domains will be skipped
 
  .PARAMETER ApiToken
@@ -20,6 +20,7 @@
     Column name where to find emails in imported csv file
 
  .EXAMPLE
+    $apiToken = 'SecretToken123' | ConvertTo-SecureString -AsPlainText -Force
     .\Add-SsoExclusionsFromCSV -csvPath 'c:\ps playground\test.csv' -HeaderName 'Email' -WhatIf
 
  .NOTES
@@ -57,17 +58,17 @@ function Add-SsoExclusionsFromCSV {
     param($csvPath, $HeaderName)
 
     #import emails fom csv
-    $users = Import-Csv -Path $csvPath
+    $csvRows = Import-Csv -Path $csvPath
 	
-    if ($users.Count -eq 0) {
+    if ($csvRows.Count -eq 0) {
         Write-Information "No entries found in CSV file"
         exit
     }
     else {
-        Write-Information "Found $($users.Count) users in CSV file"
+        Write-Information "Found $($csvRows.Count) rows in CSV file"
     }
 	
-    $emails = $users | Select-Object -ExpandProperty $HeaderName
+    $emails = $csvRows | Select-Object -ExpandProperty $HeaderName
 	
     if ($emails.Count -eq 0) {
         Write-Information "No valid emails found in CSV file"
