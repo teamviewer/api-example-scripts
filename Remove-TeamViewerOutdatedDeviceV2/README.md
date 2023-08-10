@@ -1,11 +1,9 @@
 # Remove-TeamViewerOutdatedDeviceV2
 
-Removes TeamViewer devices that didn't appear online for a given time.
+Removes TeamViewer devices (MDv2) that didn't appear online for a given time.
 
-The script fetches a list of TeamViewer devices of the TeamViewer company
-that corresponds to a given API token. The list will be filtered by
-devices being offline for a certain amount of time. These devices will
-be removed.
+The script fetches a list of TeamViewer devices (MDv2) of the TeamViewer company that corresponds to a given API token.
+The list will be filtered by devices being offline for a certain amount of time. These devices will be removed.
 The expiration can either be specified by a specific date or by interval.
 
 ## Prerequisites
