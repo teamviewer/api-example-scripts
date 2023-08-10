@@ -1,6 +1,6 @@
 # Add-SsoExclusionsFromCSV
 
-Adds users from provided CSV file to SSO exclusion list of their respective domain
+Adds users from a CSV file to the TeamViewer SSO exclusion list of their respective domain.
 
 ## Prerequisites
 
@@ -15,20 +15,20 @@ Install-Module TeamViewerPS
 ### Import users from a CSV file
 
 ```powershell
-.\Add-SsoExclusionsFromCSV -csvPath 'c:\ps playground\test.csv' -HeaderName 'Email'
+.\Add-SsoExclusionsFromCSV -Path 'c:\Example.csv' -HeaderName 'Email'
 ```
 
-### Import users from a CSV file that uses semi-colon as delimiter. Use the given API token
+### Import users from a CSV file and use the given API token
 
 ```powershell
 $apiToken = 'SecretToken123' | ConvertTo-SecureString -AsPlainText -Force
-.\Add-SsoExclusionsFromCSV -csvPath 'c:\ps playground\test.csv' -HeaderName 'Email'
+.\Add-SsoExclusionsFromCSV -Path 'c:\Example.csv' -HeaderName 'Email'
 ```
 
-### Run the import script in "Test Mode" to see the changes that would be made.
+### Run the import script in "Test Mode" to see the changes that would be made
 
 ```powershell
-.\Add-SsoExclusionsFromCSV -csvPath 'c:\ps playground\test.csv' -HeaderName 'Email' -WhatIf
+.\Add-SsoExclusionsFromCSV -Path 'c:\Example.csv' -HeaderName 'Email' -WhatIf
 ```
 
 ## More help
