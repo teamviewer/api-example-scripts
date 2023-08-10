@@ -7,6 +7,11 @@ A continously growing set of Powershell example scripts that showcase the
 
 ## Contents
 
+### [Add-SsoExclusionsFromCSV](./Add-SsoExclusionsFromCSV)
+
+* 📜 Adds users from a CSV file to the TeamViewer SSO exclusion list of their respective domain.
+* ⚙️ [TeamViewerPS](https://github.com/teamviewer/TeamViewerPS) module needed
+
 ### [Set-TeamViewerDevicesPolicy](./Set-TeamViewerDevicesPolicy)
 
 * 📜 Sets the policy for all / specific devices to specific policy or inherits policy from group.
