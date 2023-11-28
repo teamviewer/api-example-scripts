@@ -41,16 +41,16 @@
     The default value is `false`, causing the script to ask the user one more time before starting to remove devices.
 
  .EXAMPLE
-    .\Remove-TeamViewerOutdatedDevice -ExpiryDate '2018-12-17T17:00:00'
+    .\Remove-TeamViewerOutdatedDeviceV2 -ExpiryDate '2018-12-17T17:00:00'
 
  .EXAMPLE
-    .\Remove-TeamViewerOutdatedDevice -ExpiryDate 2018-12-31 -WhatIf
+    .\Remove-TeamViewerOutdatedDeviceV2 -ExpiryDate 2018-12-31 -WhatIf
 
  .EXAMPLE
-    .\Remove-TeamViewerOutdatedDevice -ExpiryInterval -Days 10
+    .\Remove-TeamViewerOutdatedDeviceV2 -ExpiryInterval -Days 10
 
  .EXAMPLE
-    .\Remove-TeamViewerOutdatedDevice -ExpiryInterval -Hours 12 -Force
+    .\Remove-TeamViewerOutdatedDeviceV2 -ExpiryInterval -Hours 12 -Force
 
  .NOTES
      This script requires the TeamViewerPS module to be installed.
