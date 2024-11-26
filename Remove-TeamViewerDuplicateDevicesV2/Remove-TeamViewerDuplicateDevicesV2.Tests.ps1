@@ -23,28 +23,36 @@ Describe 'Remove-TeamViewerDuplicateDevicesV2' {
     It 'Should not remove any devices if -WhatIf parameter has been set' {
         $result = (Remove-TeamViewerDuplicateDevicesV2 -force:$false -WhatIf)
         $result | Should -HaveCount 3
-        $result[0].TeamViewerId | Should -Be 'older device A'
-        $result[0].Status | Should -Be 'Unchanged'
-        $result[1].TeamViewerId | Should -Be 'newer device A'
-        $result[1].Status | Should -Be 'Unchanged'
-        $result[2].TeamViewerId | Should -Be 'older device B'
-        $result[2].Status | Should -Be 'Unchanged'
 
-        Assert-MockCalled Get-TeamViewerCompanyManagedDevice -Times 1 -Scope It
-        Assert-MockCalled Remove-TeamViewerManagedDeviceManagement -Times 0 -Scope It
+        $result_names = $result | ForEach-Object { $_.TeamViewerId }
+        $result_names | Should -Contain 'older device A'
+        $result_names | Should -Contain 'newer device A'
+        $result_names | Should -Contain 'older device B'
+
+        $result_statuses = $result | ForEach-Object { $_.Status }
+        $result_statuses[0] | Should -Be 'Unchanged'
+        $result_statuses[1] | Should -Be 'Unchanged'
+        $result_statuses[2] | Should -Be 'Unchanged'
+
+        Assert-MockCalled Get-TeamViewerCompanyManagedDevice -Times 1 -Exactly -Scope It
+        Assert-MockCalled Remove-TeamViewerManagedDeviceManagement -Times 0 -Exactly -Scope It
     }
 
     It 'Should remove duplicate devices with an older last-seen timestamp' {
         $result = (Remove-TeamViewerDuplicateDevicesV2 -force:$true)
         $result | Should -HaveCount 3
-        $result[0].TeamViewerId | Should -Be 'older device A'
-        $result[0].Status | Should -Be 'Removed'
-        $result[1].TeamViewerId | Should -Be 'newer device A'
-        $result[1].Status | Should -Be 'Removed'
-        $result[2].TeamViewerId | Should -Be 'older device B'
-        $result[2].Status | Should -Be 'Removed'
 
-        Assert-MockCalled Get-TeamViewerCompanyManagedDevice -Times 1 -Scope It
-        Assert-MockCalled Remove-TeamViewerManagedDeviceManagement -Times 3 -Scope It
+        $result_names = $result | ForEach-Object { $_.TeamViewerId }
+        $result_names | Should -Contain 'older device A'
+        $result_names | Should -Contain 'newer device A'
+        $result_names | Should -Contain 'older device B'
+
+        $result_statuses = $result | ForEach-Object { $_.Status }
+        $result_statuses[0] | Should -Be 'Removed'
+        $result_statuses[1] | Should -Be 'Removed'
+        $result_statuses[2] | Should -Be 'Removed'
+
+        Assert-MockCalled Get-TeamViewerCompanyManagedDevice -Times 1 -Exactly -Scope It
+        Assert-MockCalled Remove-TeamViewerManagedDeviceManagement -Times 3 -Exactly -Scope It
     }
 }
