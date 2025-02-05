@@ -11,7 +11,7 @@
  .PARAMETER ApiToken
     The TeamViewer API token to use.
     Must be a user access token.
-    The token requires the following access permissions: company admin
+    The token requires the following access permissions: company admin, Device Groups: read and write operations
 
  .PARAMETER Force
     If set, the script will NOT ask the user for confirmation of the removal.
