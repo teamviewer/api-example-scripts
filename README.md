@@ -17,6 +17,11 @@ A continously growing set of Powershell example scripts that showcase the
 * 📜 Sets the policy for all / specific devices to specific policy or inherits policy from group.
 * ⚙️ [TeamViewerPS](https://github.com/teamviewer/TeamViewerPS) module needed
 
+### [Remove-TeamViewerDuplicateDevicesV2](./Remove-TeamViewerDuplicateDevicesV2)
+
+* 📜 Removes TeamViewer devices (MDv2) that have a duplicate counterpart in the same company.
+* ⚙️ [TeamViewerPS](https://github.com/teamviewer/TeamViewerPS) module needed
+
 ### [Remove-TeamViewerOutdatedDevice](./Remove-TeamViewerOutdatedDevice)
 
 * 📜 Removes TeamViewer devices (MDv1) that didn't appear online for a given time.
@@ -27,7 +32,7 @@ A continously growing set of Powershell example scripts that showcase the
 * 📜 Removes TeamViewer devices (MDv2) that didn't appear online for a given time.
 * ⚙️ [TeamViewerPS](https://github.com/teamviewer/TeamViewerPS) module needed
 
-### [Import-TeamViewerUser](./Import-TeamViewerUser):
+### [Import-TeamViewerUser](./Import-TeamViewerUser)
 
 * 📜 Imports and updates a set of users from a CSV file into the TeamViewer company.
 * ⚙️ [TeamViewerPS](https://github.com/teamviewer/TeamViewerPS) module needed
