@@ -32,10 +32,6 @@
  .PARAMETER DefaultUserPassword
     The fallback user password used for creating new users. This value is only considered if not given in the CSV or pipeline user data.
 
- .PARAMETER DefaultUserPermissions
-    The fallback user permissions used for creating new users. This value is only considered if not given in the CSV or pipeline user data.
-    Must be a comma-separated list of user permissions, see the "TeamViewer API Documentation" for valid inputs.
-
  .PARAMETER DefaultSsoCustomerId
     The fallback SSO customer ID, used for creating new users that are already enabled and activated for SSO logins.
     This value is only considered if not given in the CSV or pipeline user data.
@@ -94,9 +90,6 @@ param(
 
     [Parameter(Mandatory = $false)]
     [securestring] $DefaultUserPassword,
-
-    [Parameter(Mandatory = $false)]
-    [string[]] $DefaultUserPermissions = @('ShareOwnGroups', 'EditConnections', 'EditFullProfile', 'ViewOwnConnections'),
 
     [Parameter(Mandatory = $false)]
     [securestring] $DefaultSsoCustomerId
@@ -170,13 +163,6 @@ function Import-TeamViewerUser {
                 }
                 else {
                     $additionalParameters['WithoutPassword'] = $true
-                }
-
-                if ($user.permissions) {
-                    $additionalParameters['Permissions'] = $user.permissions -split ','
-                }
-                elseif ($DefaultUserPermissions) {
-                    $additionalParameters['Permissions'] = $DefaultUserPermissions
                 }
 
                 if ($user.language) {
