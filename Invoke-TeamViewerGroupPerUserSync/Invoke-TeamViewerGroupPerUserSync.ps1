@@ -106,7 +106,7 @@ function ConvertTo-GroupName($user) {
 
 function Install-TeamViewerModule { if (!(Get-Module TeamViewerPS)) { Install-Module TeamViewerPS } }
 
-function Write-Log {
+function Write-SyncLog {
     param(
         [Parameter(ValueFromPipeline)] $message,
         [Parameter(Mandatory = $false)][ValidateSet('Info', 'Error', 'Warning')][string] $Severity = "Info",
@@ -153,13 +153,13 @@ function Invoke-TeamViewerGroupPerUserSync {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param($sourceGroupName, [bool]$ignoreSourceGroup, $mappingData)
 
-    Write-Log "Script started"
-    Write-Log "Environment: OS $([environment]::OSVersion.VersionString), PS $($PSVersionTable.PSVersion)"
-    Write-Log "Read $($mappingData.Count) mapping entries from CSV."
+    Write-SyncLog "Script started"
+    Write-SyncLog "Environment: OS $([environment]::OSVersion.VersionString), PS $($PSVersionTable.PSVersion)"
+    Write-SyncLog "Read $($mappingData.Count) mapping entries from CSV."
 
-    Write-Log "Checking connection to TeamViewer API."
+    Write-SyncLog "Checking connection to TeamViewer API."
     if (!(Invoke-TeamViewerPing -ApiToken $ApiToken)) {
-        Write-Log -Fatal "Failed to contact TeamViewer API. Invalid token or connection problem. Aborting."
+        Write-SyncLog -Fatal "Failed to contact TeamViewer API. Invalid token or connection problem. Aborting."
     }
 
     $statistics = @{ Updated = 0; Failed = 0; Unchanged = 0; }
@@ -167,42 +167,42 @@ function Invoke-TeamViewerGroupPerUserSync {
 
     # Fetch current users/devices/groups:
 
-    Write-Log "Fetching TeamViewer company users."
+    Write-SyncLog "Fetching TeamViewer company users."
     $users = @(Get-TeamViewerUser -ApiToken $ApiToken)
     $usersByEmail = @{ }
     ($users | ForEach-Object { $usersByEmail[$_.Email] = $_ } | Out-Null)
-    Write-Log "Retrieved $($users.Count) TeamViewer company users."
+    Write-SyncLog "Retrieved $($users.Count) TeamViewer company users."
 
-    Write-Log "Fetching TeamViewer groups of administrative user."
+    Write-SyncLog "Fetching TeamViewer groups of administrative user."
     $groups = @(Get-TeamViewerGroup -ApiToken $ApiToken)
     $groupsByName = @{ }
     ($groups | ForEach-Object { $groupsByName[$_.Name] = $_ } | Out-Null)
-    Write-Log "Retrieved $($groups.Count) TeamViewer groups."
+    Write-SyncLog "Retrieved $($groups.Count) TeamViewer groups."
 
-    Write-Log "Fetching TeamViewer devices list of administrative user."
+    Write-SyncLog "Fetching TeamViewer devices list of administrative user."
     $devices = @(Get-TeamViewerDevice -ApiToken $ApiToken)
     $devicesByAlias = @{ }
     $devicesByRemoteControlId = @{}
     ($devices | Where-Object { $_.Name } | ForEach-Object { $devicesByAlias[$_.Name] = $_ } | Out-Null)
     ($devices | Where-Object { $_.TeamViewerId } | ForEach-Object { $devicesByRemoteControlId[$_.TeamViewerId] = $_ } | Out-Null)
-    Write-Log "Retrieved $($devices.Count) TeamViewer devices."
+    Write-SyncLog "Retrieved $($devices.Count) TeamViewer devices."
 
     # Check for source group
     $sourceGroup = $groupsByName[$sourceGroupName]
     if (!$ignoreSourceGroup -And !$sourceGroup) {
-        Write-Log -Fatal "Source group with name '$($sourceGroupName)' not found. Aborting."
+        Write-SyncLog -Fatal "Source group with name '$($sourceGroupName)' not found. Aborting."
     }
 
-    Write-Log "Starting processing of $($mappingData.Count) given mapping entries."
+    Write-SyncLog "Starting processing of $($mappingData.Count) given mapping entries."
     $count = 0
     $totalCount = $mappingData.Count
     foreach ($entry in $mappingData) {
         $count++
-        Write-Log "Processing entry [$count/$totalCount] - email: '$($entry.email)', device: '$($entry.device)', teamviewerid: '$($entry.teamviewerid)'."
+        Write-SyncLog "Processing entry [$count/$totalCount] - email: '$($entry.email)', device: '$($entry.device)', teamviewerid: '$($entry.teamviewerid)'."
 
         $user = $usersByEmail[$entry.email]
         if (!$user) {
-            Write-Log -Severity Error "Failed to find user with email '$($entry.email)'. Skipping."
+            Write-SyncLog -Severity Error "Failed to find user with email '$($entry.email)'. Skipping."
             $statistics.Failed++
             continue
         }
@@ -213,7 +213,7 @@ function Invoke-TeamViewerGroupPerUserSync {
         $groupName = (ConvertTo-GroupName $user)
         $group = $groupsByName[$groupName]
         if (!$group) {
-            Write-Log "Creating group '$groupName'."
+            Write-SyncLog "Creating group '$groupName'."
             try {
                 if ($PSCmdlet.ShouldProcess("Create group '$groupName'.")) {
                     $group = (New-TeamViewerGroup -ApiToken $ApiToken -Name $groupName)
@@ -223,7 +223,7 @@ function Invoke-TeamViewerGroupPerUserSync {
                 $didUpdate = $true
             }
             catch {
-                Write-Log -Severity Error "Failed to create group '$groupName'. Error: $_"
+                Write-SyncLog -Severity Error "Failed to create group '$groupName'. Error: $_"
                 $statistics.Failed++
                 continue
             }
@@ -235,13 +235,13 @@ function Invoke-TeamViewerGroupPerUserSync {
             # Second, try to resolve device by alias
             $device = $devicesByAlias[$entry.device]
             if (!$device) {
-                Write-Log -Severity Error "Device '$(if ($entry.device) { $entry.device } else { $entry.teamviewerid })' not found. Skipping"
+                Write-SyncLog -Severity Error "Device '$(if ($entry.device) { $entry.device } else { $entry.teamviewerid })' not found. Skipping"
                 $statistics.Failed++
                 continue
             }
         }
         if (!$ignoreSourceGroup -And $device.GroupId -ne $sourceGroup.id) {
-            Write-Log -Severity Warning "Device '$($device.Name)' not in source group. Skipping."
+            Write-SyncLog -Severity Warning "Device '$($device.Name)' not in source group. Skipping."
             $statistics.Unchanged++
             continue
         }
@@ -249,7 +249,7 @@ function Invoke-TeamViewerGroupPerUserSync {
         # Move device to target group, if not yet done.
         if (!$device.GroupId -or $device.GroupId -ne $group.Id) {
             try {
-                Write-Log "Moving device '$($device.Name)' to group '$groupName'."
+                Write-SyncLog "Moving device '$($device.Name)' to group '$groupName'."
                 if ($PSCmdlet.ShouldProcess("Move device '$($device.Name)' to group '$groupName'.")) {
                     Set-TeamViewerDevice `
                         -ApiToken $ApiToken `
@@ -259,20 +259,20 @@ function Invoke-TeamViewerGroupPerUserSync {
                 $didUpdate = $true
             }
             catch {
-                Write-Log -Severity Error "Failed to move device '$($device.Name)' to group '$groupName'. Error: $_"
+                Write-SyncLog -Severity Error "Failed to move device '$($device.Name)' to group '$groupName'. Error: $_"
                 $statistics.Failed++
                 continue
             }
         }
         else {
-            Write-Log "Device '$($device.Name)' is already in group '$groupName'. Ignoring."
+            Write-SyncLog "Device '$($device.Name)' is already in group '$groupName'. Ignoring."
         }
 
         # Share target group with user, if not yet done.
         $sharedUserIds = (@($group.SharedWith) | Select-Object -ExpandProperty UserId)
         if ($user.id -notin $sharedUserIds) {
             try {
-                Write-Log "Sharing group '$groupName' with user '$($user.email)'."
+                Write-SyncLog "Sharing group '$groupName' with user '$($user.email)'."
                 if ($PSCmdlet.ShouldProcess("Sharing group '$groupName' with user '$($user.email)'.")) {
                     Publish-TeamViewerGroup `
                         -ApiToken $ApiToken `
@@ -283,20 +283,20 @@ function Invoke-TeamViewerGroupPerUserSync {
                 $didUpdate = $true
             }
             catch {
-                Write-Log -Severity Error "Failed to share group '$groupName' with user '$($user.email)'. Error: $_"
+                Write-SyncLog -Severity Error "Failed to share group '$groupName' with user '$($user.email)'. Error: $_"
                 $statistics.Failed++
                 continue
             }
         }
         else {
-            Write-Log "Group '$groupName' is already shared with user '$($user.email)'. Ignoring."
+            Write-SyncLog "Group '$groupName' is already shared with user '$($user.email)'. Ignoring."
         }
 
         if ($didUpdate) { $statistics.Updated++ }
         else { $statistics.Unchanged++ }
     }
 
-    Write-Log "Script finished"
+    Write-SyncLog "Script finished"
     $stopwatch.Stop()
 
     Write-Output @{

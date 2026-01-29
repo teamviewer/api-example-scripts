@@ -104,7 +104,7 @@ function Install-TeamViewerModule {
    if (!$module) {
       Install-Module TeamViewerPS
    }
-   elseif ($module.Version -lt '1.5.0') {
+   elseif ($module.Version -lt '2.4.0') {
       Update-Module TeamViewerPS
    }
 }

@@ -8,7 +8,7 @@ The expiration can either be specified by a specific date or by interval.
 
 ## Prerequisites
 
-This script requires the `TeamViewerPS` powershell module to be installed in at least Version 1.5.0.
+This script requires the `TeamViewerPS` powershell module to be installed in at least Version 2.4.0.
 
 ```powershell
 Install-Module TeamViewerPS
